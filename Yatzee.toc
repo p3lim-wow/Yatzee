@@ -1,0 +1,8 @@
+## Interface: 30300
+## Author: p3lim
+## Version: Alpha
+## Title: Yatzee
+## Notes: Group Roll frame replacement
+## SavedVariablesPerCharacter: YatzeeDB
+
+Yatzee.lua
