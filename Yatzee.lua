@@ -295,7 +295,7 @@ function anchor:VARIABLES_LOADED(name)
 	self:RegisterEvent('START_LOOT_ROLL')
 	self:RegisterEvent('MODIFIER_STATE_CHANGED')
 
-	YatzeeDB = YatzeeDB or defaults
+	YatzeeDB = setmetatable(YatzeeDB, {__index = defaults})
 	local point1, point2, x, y = string.split('#', YatzeeDB.position)
 	self:SetPoint(point1, UIParent, point2, x, y)
 
