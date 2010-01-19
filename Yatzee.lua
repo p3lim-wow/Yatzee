@@ -227,12 +227,6 @@ local function getFrame()
 	end
 
 	local frame = createFrame()
-	if(YatzeeDB.orientation == 'down') then
-		frame:SetPoint('TOPLEFT', frames[#frames], 'BOTTOMLEFT', 0, -20)
-	else
-		frame:SetPoint('BOTTOMLEFT', frames[#frames], 'TOPLEFT', 0, 20)
-	end
-
 	frame:SetScript('OnEvent', CANCEL_LOOT_ROLL)
 	table.insert(frames, frame)
 
@@ -243,6 +237,15 @@ function anchor:START_LOOT_ROLL(id, duration)
 	local frame = getFrame()
 	frame.id = id
 	frame.bar.id = id
+
+	if(id ~= 1) then
+		frame:ClearAllPoints()
+		if(YatzeeDB.orientation == 'down') then
+			frame:SetPoint('TOPLEFT', frames[#frames], 'BOTTOMLEFT', 0, -20)
+		else
+			frame:SetPoint('BOTTOMLEFT', frames[#frames], 'TOPLEFT', 0, 20)
+		end
+	end
 
 	local texture, name, count, quality, bound, need, greed, nuke = GetLootRollItemInfo(id)
 	frame.item:SetNormalTexture(texture)
@@ -342,6 +345,15 @@ SlashCmdList.Yatzee = function(str)
 				frame.id = index
 				frame.name:SetText('Movable '..index)
 				frame:Show()
+
+				if(index ~= 1) then
+					frame:ClearAllPoints()
+					if(YatzeeDB.orientation == 'down') then
+						frame:SetPoint('TOPLEFT', frames[index - 1], 'BOTTOMLEFT', 0, -20)
+					else
+						frame:SetPoint('BOTTOMLEFT', frames[index - 1], 'TOPLEFT', 0, 20)
+					end
+				end
 			end
 		end
 	end
