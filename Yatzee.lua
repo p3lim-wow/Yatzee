@@ -20,6 +20,8 @@ local defaults = {
 	orientation = 'down',
 }
 
+local print = function(...) print('|cffff8080Yatzee:|r', ...) end
+
 local function savePosition(self)
 	local point1, _, point2, x, y = self:GetPoint()
 	YatzeeDB.position = string.format('%s#%s#%s#%s', point1, point2, x, y)
@@ -317,18 +319,24 @@ end)
 SLASH_Yatzee1 = '/yatzee'
 SlashCmdList.Yatzee = function(str)
 	if(str == 'up' or str == 'down') then
+		print('Orientation set '..str..'wards.')
 		YatzeeDB.orientation = str
 	elseif(str == 'reset') then
+		print('Settings reset to defaults. Please reload/relog to affect changes')
 		YatzeeDB = defaults
 	else
 		unlocked = not unlocked
 
 		if(anchor:IsVisible()) then
+			print('Locked frames. Click any of the buttons to unlock them.')
+
 			for k, v in pairs(frames) do
 				v.id = nil
 				v:Hide()
 			end
 		else
+			print('Unlocked frames. Click any of the buttons to lock them.')
+
 			for index = 1, 4 do
 				local frame = getFrame()
 				frame.id = index
