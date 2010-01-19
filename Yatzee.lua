@@ -226,7 +226,7 @@ function anchor:START_LOOT_ROLL(id, duration)
 	frame.item:SetNormalTexture(texture)
 	frame.item.link = GetLootRollItemLink(id)
 	frame.name:SetText(name)
-	frame:SetWidth(80 + frame.name:GetStringWidth())
+	frame:SetWidth(70 + frame.name:GetStringWidth())
 
 	if(need) then
 		frame.need:Enable()
