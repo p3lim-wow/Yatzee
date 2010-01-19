@@ -333,7 +333,11 @@ SlashCmdList.Yatzee = function(str)
 		local scale = tonumber(string.sub(str, 7, 9))
 		print('Scale set to '..scale..'%')
 		YatzeeDB.scale = scale / 100
-	elseif(str == 'unlock' and not anchor:IsVisible()) then 
+	elseif(str == 'unlock') then
+		if(anchor:IsShown()) then
+			return print('Grouproll frames in use, bailing out!')
+		end
+
 		unlocked = true
 		print('Unlocked frames. Click any of the buttons to lock them.')
 
