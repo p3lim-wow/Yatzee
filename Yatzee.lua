@@ -1,5 +1,3 @@
-local addon, ns = ...
-
 local unlocked
 
 local greedNormal = [=[Interface\Buttons\UI-GroupLoot-Coin-Up]=]
@@ -15,6 +13,16 @@ local backdrop = {
 	edgeFile = [=[Interface\Tooltips\UI-Tooltip-Border]=], edgeSize = 12,
 	insets = {left = 3, right = 3, top = 3, bottom = 3},
 }
+
+local defaults = {
+	position = 'CENTER#CENTER#-100#-100',
+	orientation = 'down',
+}
+
+local function savePosition(self)
+	local point1, _, point2, x, y = self:GetPoint()
+	YatzeeDB.position = string.format('%s#%s#%s#%s', point1, point2, x, y)
+end
 
 local function createLootTooltip(self)
 	GameTooltip:SetOwner(self, 'ANCHOR_RIGHT')
@@ -178,7 +186,7 @@ local anchor = createFrame()
 anchor:SetScript('OnDragStart', function(self) if(unlocked) then self:StartMoving() end end)
 anchor:SetScript('OnDragStop', function(self) 
 	self:StopMovingOrSizing()
-	YatzeeDB.x, YatzeeDB.y = self:GetCenter()
+	savePosition(self)
 end)
 
 anchor:SetMovable(true)
@@ -249,18 +257,17 @@ function anchor:MODIFIER_STATE_CHANGED()
 	end
 end
 
-function anchor:ADDON_LOADED(name)
-	if(name ~= addon) then return end
-
-	YatzeeDB = YatzeeDB or {x = 500, y = 500, orientation = 'down'}
-
+function anchor:VARIABLES_LOADED(name)
 	self:UnregisterEvent(event)
 	self.CONFIRM_DISENCHANT_ROLL = self.CONFIRM_LOOT_ROLL
 	self:RegisterEvent('CONFIRM_DISENCHANT_ROLL')
 	self:RegisterEvent('CONFIRM_LOOT_ROLL')
 	self:RegisterEvent('START_LOOT_ROLL')
 	self:RegisterEvent('MODIFIER_STATE_CHANGED')
-	self:SetPoint('CENTER', UIParent, 'BOTTOMLEFT', YatzeeDB.x, YatzeeDB.y)
+
+	YatzeeDB = YatzeeDB or defaults
+	local point1, point2, x, y = string.split('#', YatzeeDB.position)
+	self:SetPoint(point1, UIParent, point2, x, y)
 
 	UIParent:UnregisterEvent('START_LOOT_ROLL')
 	UIParent:UnregisterEvent('CANCEL_LOOT_ROLL')
@@ -275,7 +282,7 @@ function anchor:CONFIRM_LOOT_ROLL(id, rolltype)
 	end
 end
 
-anchor:RegisterEvent('ADDON_LOADED')
+anchor:RegisterEvent('VARIABLES_LOADED')
 anchor:SetScript('OnEvent', function(self, event, ...)
 	if(event == 'CANCEL_LOOT_ROLL') then
 		CANCEL_LOOT_ROLL(self, event, ...)
@@ -285,11 +292,11 @@ anchor:SetScript('OnEvent', function(self, event, ...)
 end)
 
 SLASH_Yatzee1 = '/yatzee'
-SlashCmdList[addon] = function(str)
+SlashCmdList.Yatzee = function(str)
 	if(str == 'up' or str == 'down') then
 		YatzeeDB.orientation = str
 	elseif(str == 'reset') then
-		YatzeeDB = {x = 0, y = -100, orientation = 'down'}
+		YatzeeDB = defaults
 	else
 		unlocked = not unlocked
 
