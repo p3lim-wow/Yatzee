@@ -8,6 +8,7 @@ local nukeNormal = [=[Interface\Buttons\UI-GroupLoot-DE-Up]=]
 local nukePushed = [=[Interface\Buttons\UI-GroupLoot-DE-Down]=]
 local nukeHighlight = [=[Interface\Buttons\UI-GroupLoot-DE-Highlight]=]
 
+local frames = {}
 local backdrop = {
 	bgFile = [=[Interface\ChatFrame\ChatFrameBackground]=],
 	edgeFile = [=[Interface\Tooltips\UI-Tooltip-Border]=], edgeSize = 12,
@@ -58,7 +59,11 @@ end
 local function onLootClick(self)
 	if(unlocked) then
 		unlocked = not unlocked
-		self:GetParent():Hide()
+
+		for k, v in pairs(frames) do
+			v.id = nil
+			v:Hide()
+		end
 	else
 		RollOnLoot(self:GetParent().id, self.type and self.type or (IsShiftKeyDown() or not self:GetParent().nukable) and 2 or 3)
 	end
@@ -180,8 +185,6 @@ local function createFrame()
 	return frame
 end
 
-local frames = {}
-
 local anchor = createFrame()
 anchor:SetScript('OnDragStart', function(self) if(unlocked) then self:StartMoving() end end)
 anchor:SetScript('OnDragStop', function(self) 
@@ -301,10 +304,17 @@ SlashCmdList.Yatzee = function(str)
 		unlocked = not unlocked
 
 		if(anchor:IsVisible()) then
-			anchor:Hide()
+			for k, v in pairs(frames) do
+				v.id = nil
+				v:Hide()
+			end
 		else
-			anchor:Show()
-			anchor.name:SetText('Movable!')
+			for index = 1, 4 do
+				local frame = getFrame()
+				frame.id = index
+				frame.name:SetText('Movable '..index)
+				frame:Show()
+			end
 		end
 	end
 end
