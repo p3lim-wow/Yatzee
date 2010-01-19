@@ -91,6 +91,11 @@ local function CANCEL_LOOT_ROLL(self, event, id)
 	end
 end
 
+local function onShow(self)
+	self.flash:Show()
+	self.animation:Play()
+end
+
 local function createFrame()
 	local frame = CreateFrame('Frame', nil, UIParent)
 	frame:SetWidth(300)
@@ -99,6 +104,7 @@ local function createFrame()
 	frame:SetBackdropColor(0.3, 0.3, 0.3, 0.5)
 	frame:SetBackdropBorderColor(0.7, 0.7, 0.7)
 	frame:RegisterEvent('CANCEL_LOOT_ROLL')
+	frame:HookScript('OnShow', onShow)
 	frame:Hide()
 
 	local item = CreateFrame('Button', nil, frame)
@@ -113,6 +119,20 @@ local function createFrame()
 	item:SetScript('OnUpdate', onItemUpdate)
 	item:SetScript('OnClick', onItemClick)
 	frame.item = item
+
+	local overlay = CreateFrame('Frame', nil, item)
+	overlay:SetAllPoints(item)
+	overlay:SetToplevel(true)
+
+	local flash = overlay:CreateTexture(nil, 'OVERLAY')
+	flash:SetAllPoints(overlay)
+	flash:SetTexture([=[Interface\Cooldown\starburst]=])
+	flash:SetBlendMode('ADD')
+	frame.flash = flash
+
+	local animation = overlay:CreateAnimationGroup(nil, 'YatzeeAnimationTemplate')
+	animation:HookScript('OnFinished', function() flash:Hide() end)
+	frame.animation = animation
 
 	local name = item:CreateFontString(nil, 'ARTWORK', 'GameFontNormal')
 	name:SetPoint('LEFT', item, 'RIGHT', 30, 1)

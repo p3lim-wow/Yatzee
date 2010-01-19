@@ -5,4 +5,4 @@
 ## Notes: Group Roll frame replacement
 ## SavedVariablesPerCharacter: YatzeeDB
 
-Yatzee.lua
+Yatzee.xml

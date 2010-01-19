@@ -1,0 +1,15 @@
+﻿<Ui xmlns='http://www.blizzard.com/wow/ui/'>
+	<AnimationGroup name='YatzeeAnimationTemplate' looping='NONE' virtual='true'>
+		<Alpha change='-1' duration='0' order='0'/>
+		<Alpha change='1' duration='0.4' order='1'/>
+		<Scale scaleX='3' scaleY='3' duration='0.5' order='1'>
+			<Origin point='CENTER'/>
+		</Scale>
+		<Scale scaleX='-3' scaleY='-3' duration='0.4' order='2'>
+			<Origin point='CENTER'/>
+		</Scale>
+		<Alpha change='-1' duration='0.4' order='2'/>
+	</AnimationGroup>
+
+	<Script file='Yatzee.lua'/>
+</Ui>
