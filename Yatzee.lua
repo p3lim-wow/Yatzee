@@ -357,6 +357,7 @@ SlashCmdList.Yatzee = function(str)
 			end
 		end
 	elseif(str == 'lock' and anchor:IsVisible()) then
+		unlocked = false
 		print('Locked frames. Click any of the buttons to unlock them.')
 
 		for k, v in pairs(frames) do
