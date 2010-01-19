@@ -333,34 +333,37 @@ SlashCmdList.Yatzee = function(str)
 		local scale = tonumber(string.sub(str, 7, 9))
 		print('Scale set to '..scale..'%')
 		YatzeeDB.scale = scale / 100
-	else
-		unlocked = not unlocked
+	elseif(str == 'unlock' and not anchor:IsVisible()) then 
+		unlocked = true
+		print('Unlocked frames. Click any of the buttons to lock them.')
 
-		if(anchor:IsVisible()) then
-			print('Locked frames. Click any of the buttons to unlock them.')
+		for index = 1, 4 do
+			local frame = getFrame()
+			frame.id = index
+			frame.name:SetText('Movable '..index)
+			frame:Show()
 
-			for k, v in pairs(frames) do
-				v.id = nil
-				v:Hide()
-			end
-		else
-			print('Unlocked frames. Click any of the buttons to lock them.')
-
-			for index = 1, 4 do
-				local frame = getFrame()
-				frame.id = index
-				frame.name:SetText('Movable '..index)
-				frame:Show()
-
-				if(index ~= 1) then
-					frame:ClearAllPoints()
-					if(YatzeeDB.orientation == 'down') then
-						frame:SetPoint('TOPLEFT', frames[index - 1], 'BOTTOMLEFT', 0, -20)
-					else
-						frame:SetPoint('BOTTOMLEFT', frames[index - 1], 'TOPLEFT', 0, 20)
-					end
+			if(index ~= 1) then
+				frame:ClearAllPoints()
+				if(YatzeeDB.orientation == 'down') then
+					frame:SetPoint('TOPLEFT', frames[index - 1], 'BOTTOMLEFT', 0, -20)
+				else
+					frame:SetPoint('BOTTOMLEFT', frames[index - 1], 'TOPLEFT', 0, 20)
 				end
 			end
 		end
+	elseif(str == 'lock' and anchor:IsVisible()) then
+		print('Locked frames. Click any of the buttons to unlock them.')
+
+		for k, v in pairs(frames) do
+			v.id = nil
+			v:Hide()
+		end
+	else
+		print('Usage:\n' ..
+			'  |cff999999lock|unlock|r - Unlock or lock the moving frames\n' ..
+			'  |cff999999scale #|r - Set scale of frames, # is % value (0-300)\n' ..
+			'  |cff999999up|down|r - Set orientation of the growing\n' ..
+			'  |cff999999reset|r - Reset settings to defaults')
 	end
 end
