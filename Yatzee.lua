@@ -18,6 +18,7 @@ local backdrop = {
 local defaults = {
 	position = 'CENTER#CENTER#-100#-100',
 	orientation = 'down',
+	scale = 1,
 }
 
 local print = function(...) print('|cffff8080Yatzee:|r', ...) end
@@ -237,6 +238,7 @@ function anchor:START_LOOT_ROLL(id, duration)
 	local frame = getFrame()
 	frame.id = id
 	frame.bar.id = id
+	frame:SetScale(YatzeeDB.scale)
 
 	if(id ~= 1) then
 		frame:ClearAllPoints()
@@ -327,6 +329,10 @@ SlashCmdList.Yatzee = function(str)
 	elseif(str == 'reset') then
 		print('Settings reset to defaults. Please reload/relog to affect changes')
 		YatzeeDB = defaults
+	elseif(string.sub(str, 1, 5) == 'scale') then
+		local scale = tonumber(string.sub(str, 7, 9))
+		print('Scale set to '..scale..'%')
+		YatzeeDB.scale = scale / 100
 	else
 		unlocked = not unlocked
 
