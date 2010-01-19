@@ -129,7 +129,7 @@ local function createFrame()
 
 	local flash = overlay:CreateTexture(nil, 'OVERLAY')
 	flash:SetAllPoints(overlay)
-	flash:SetTexture([=[Interface\Cooldown\starburst]=])
+	flash:SetTexture([=[Interface\Cooldown\star4]=])
 	flash:SetBlendMode('ADD')
 	frame.flash = flash
 
