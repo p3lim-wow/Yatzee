@@ -68,7 +68,9 @@ local function onLootClick(self)
 			v:Hide()
 		end
 	else
-		RollOnLoot(self:GetParent().id, self.type and self.type or (IsShiftKeyDown() or not self:GetParent().nukable) and 2 or 3)
+		local parent = self:GetParent()
+		parent.id = nil
+		RollOnLoot(parent.id, self.type and self.type or (IsShiftKeyDown() or not parent.nukable) and 2 or 3)
 	end
 end
 
