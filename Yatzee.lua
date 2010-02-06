@@ -243,9 +243,9 @@ function anchor:START_LOOT_ROLL(id, duration)
 	if(id ~= anchor.id) then
 		frame:ClearAllPoints()
 		if(YatzeeDB.orientation == 'down') then
-			frame:SetPoint('TOPLEFT', frames[#frames - 1], 'BOTTOMLEFT', 0, -20)
+			frame:SetPoint('TOPLEFT', next(frames) and frames[#frames] or anchor, 'BOTTOMLEFT', 0, -20)
 		else
-			frame:SetPoint('BOTTOMLEFT', frames[#frames - 1], 'TOPLEFT', 0, 20)
+			frame:SetPoint('BOTTOMLEFT', next(frames) and frames[#frames] or anchor, 'TOPLEFT', 0, 20)
 		end
 	end
 
