@@ -1,376 +1,208 @@
-local unlocked
+--[[
+ 
+Copyright (c) 2009, Adrian L Lange
+All rights reserved.
+ 
+You're allowed to use this addon, free of monetary charge,
+but you are not allowed to modify, alter, or redistribute
+this addon without express, written permission of the author.
+ 
+--]]
 
-local greedNormal = [=[Interface\Buttons\UI-GroupLoot-Coin-Up]=]
-local greedPushed = [=[Interface\Buttons\UI-GroupLoot-Coin-Down]=] 
-local greedHighlight = [=[Interface\Buttons\UI-GroupLoot-Coin-Highlight]=]
-
-local nukeNormal = [=[Interface\Buttons\UI-GroupLoot-DE-Up]=]
-local nukePushed = [=[Interface\Buttons\UI-GroupLoot-DE-Down]=]
-local nukeHighlight = [=[Interface\Buttons\UI-GroupLoot-DE-Highlight]=]
-
-local frames = {}
-local backdrop = {
-	bgFile = [=[Interface\ChatFrame\ChatFrameBackground]=],
-	edgeFile = [=[Interface\Tooltips\UI-Tooltip-Border]=], edgeSize = 12,
-	insets = {left = 3, right = 3, top = 3, bottom = 3},
-}
-
-local defaults = {
-	position = 'CENTER#CENTER#-100#-100',
-	orientation = 'down',
-	scale = 1,
-}
-
-local print = function(...) print('|cffff8080Yatzee:|r', ...) end
-
-local function savePosition(self)
-	local point1, _, point2, x, y = self:GetPoint()
-	YatzeeDB.position = string.format('%s#%s#%s#%s', point1, point2, x, y)
+local function Update(self)
+	self:SetValue(GetLootRollTimeLeft(self.id))
 end
 
-local function createLootTooltip(self)
-	GameTooltip:SetOwner(self, 'ANCHOR_RIGHT')
-	GameTooltip:SetText(unlocked and 'Lock' or self.tooltip and self.tooltip or (IsShiftKeyDown() or not self:GetParent().nukable) and GREED or ROLL_DISENCHANT)
-	GameTooltip:Show()
+local function IconClick(self)
+	HandleModifiedItemClick(GetLootRollItemLink(self:GetParent().id))
 end
 
-local function createItemTooltip(self)
-	if(not self.link) then return end
-
-	GameTooltip:SetOwner(self, 'ANCHOR_TOPLEFT')
-	GameTooltip:SetHyperlink(self.link)
-
-	if(IsShiftKeyDown()) then
-		GameTooltip_ShowCompareItem()
-	end
-
-	if(IsModifiedClick('DRESSUP')) then
-		ShowInspectCursor()
-	else
-		ResetCursor()
-	end
-end
-
-local function onItemUpdate(self)
-	if(IsShiftKeyDown()) then
-		GameTooltip_ShowCompareItem()
+local function IconUpdate(self)
+	if(GameTooltip:IsOwned(self)) then
+		GameTooltip:SetOwner(self, 'ANCHOR_RIGHT')
+		GameTooltip:SetLootRollItem(self:GetParent().id)
 	end
 
 	CursorOnUpdate(self)
 end
 
-local function onLootClick(self)
-	if(unlocked) then
-		unlocked = not unlocked
+local function IconTooltip(self)
+	GameTooltip:SetOwner(self, 'ANCHOR_TOPLEFT')
+	GameTooltip:SetLootRollItem(self:GetParent().id)
 
-		for k, v in pairs(frames) do
-			v.id = nil
-			v:Hide()
-		end
+	if(self.reason) then
+		GameTooltip:AddLine(self.reason, 1, 0, 0)
+		GameTooltip:Show()
+	end
+end
+
+local function ButtonClick(self, button)
+	if(self.type == 0 and button ~= 'RightButton') then return end
+	RollOnLoot(self.id or self:GetParent().id, self.type)
+end
+
+local function ButtonTooltip(self)
+	GameTooltip:SetOwner(self, 'ANCHOR_RIGHT')
+	GameTooltip:SetText(self.type == 1 and NEED or self.type == 2 and GREED or ROLL_DISENCHANT)
+end
+
+local function MODIFIER_STATE_CHANGED(self)
+	local button = self.greed
+	if(IsShiftKeyDown() or not self.nukable) then
+		button:SetNormalTexture([=[Interface\Buttons\UI-GroupLoot-Coin-Up]=])
+		button:SetPushedTexture([=[Interface\Buttons\UI-GroupLoot-Coin-Down]=])
+		button:SetHighlightTexture([=[Interface\Buttons\UI-GroupLoot-Coin-Highlight]=])
+		button.type = 2
 	else
-		local parent = self:GetParent()
-		parent.id = nil
-		RollOnLoot(parent.id, self.type and self.type or (IsShiftKeyDown() or not parent.nukable) and 2 or 3)
+		button:SetNormalTexture([=[Interface\Buttons\UI-GroupLoot-DE-Up]=])
+		button:SetPushedTexture([=[Interface\Buttons\UI-GroupLoot-DE-Down]=])
+		button:SetHighlightTexture([=[Interface\Buttons\UI-GroupLoot-DE-Highlight]=])
+		button.type = 3
 	end
 end
 
-local function onItemClick(self)
-	if(IsControlKeyDown()) then
-		DressUpItemLink(self.link)
-	elseif(IsShiftKeyDown()) then
-		ChatEdit_InsertLink(self.link)
-	end
-end
-
-local function onBarUpdate(self)
-	self:SetValue(GetLootRollTimeLeft(self.id))
-end
-
-local cancelled = {}
-local function CANCEL_LOOT_ROLL(self, event, id)
-	cancelled[id] = true
-
-	if(self.id == id) then
-		self.id = nil
+local function CANCEL_LOOT_ROLL(self, id)
+	if(id == self.id) then
 		self:Hide()
 	end
 end
 
-local function onShow(self)
-	self.flash:Show()
-	self.animation:Play()
+local function OnShow(self)
+	local texture, name, _, _, bop, needable, _, nukable, reason = GetLootRollItemInfo(self.id)
+	self.icon:SetNormalTexture(texture)
+	self.icon:GetNormalTexture():SetTexCoord(0.08, 0.92, 0.08, 0.92)
+
+	self.name:SetFormattedText('|cffff0000%s|r%s', bop and '!' or '', name)
+	self:SetWidth(self.name:GetWidth() + 100)
+
+	self.nukable = nukable
+	MODIFIER_STATE_CHANGED(self)
+
+	if(needable) then
+		GroupLootFrame_EnableLootButton(self.need)
+		self.need.reason = nil
+	else
+		GroupLootFrame_DisableLootButton(self.need)
+		self.need.reason = _G['LOOT_ROLL_INELIGIBLE_REASON'..reason]
+	end
+
+	self:SetMinMaxValues(0, self.time)
+	self:SetValue(self.time)
 end
 
-local function createFrame()
-	local frame = CreateFrame('Frame', nil, UIParent)
-	frame:SetWidth(300)
-	frame:SetHeight(24)
-	frame:SetBackdrop(backdrop)
-	frame:SetBackdropColor(0.3, 0.3, 0.3, 0.5)
-	frame:SetBackdropBorderColor(0.5, 0.5, 0.5)
-	frame:RegisterEvent('CANCEL_LOOT_ROLL')
-	frame:HookScript('OnShow', onShow)
-	frame:Hide()
+local function OnEvent(self, event, id)
+	if(event == 'CANCEL_LOOT_ROLL') then
+		if(id == self.id) then
+			self:Hide()
+		end
+	else
+		MODIFIER_STATE_CHANGED(self)
+	end
+end
 
-	local item = CreateFrame('Button', nil, frame)
-	item:SetPoint('CENTER', frame, 'LEFT')
-	item:SetWidth(26)
-	item:SetHeight(26)
-	item:SetNormalTexture([=[Interface\InventoryItems\WoWUnknownItem01]=])
-	item:SetHighlightTexture([=[Interface\Calendar\CurrentDay]=])
-	item:GetHighlightTexture():SetTexCoord(0.58, 0.96, 0.13, 0.49)
-	item:SetScript('OnEnter', createItemTooltip)
-	item:SetScript('OnLeave', GameTooltip_HideResetCursor)
-	item:SetScript('OnUpdate', onItemUpdate)
-	item:SetScript('OnClick', onItemClick)
-	frame.item = item
+local frames = {}
+for index = 1, 4 do
+	local bar = CreateFrame('StatusBar', nil, UIParent)
+	bar:SetSize(300, 10)
+	bar:SetBackdrop({bgFile = [=[Interface\ChatFrame\ChatFrameBackground]=], insets = {top = -1, bottom = -1, left = -1, right = -1}})
+	bar:SetBackdropColor(0, 0, 0)
+	bar:SetStatusBarTexture([=[Interface\AddOns\Yatzee\minimalist]=])
+	bar:SetStatusBarColor(1/4, 1/4, 2/5)
+	bar:SetScript('OnUpdate', Update)
+	bar:SetScript('OnMouseUp', ButtonClick)
+	bar:SetScript('OnEvent', OnEvent)
+	bar:SetScript('OnShow', OnShow)
+	bar:EnableMouse(true)
+	bar:RegisterEvent('CANCEL_LOOT_ROLL')
+	bar:RegisterEvent('MODIFIER_STATE_CHANGED')
+	bar.type = 0
+	bar:Hide()
 
-	local overlay = CreateFrame('Frame', nil, item)
-	overlay:SetAllPoints(item)
-	overlay:SetToplevel(true)
+	local background = bar:CreateTexture('$parentBG', 'BORDER')
+	background:SetAllPoints(bar)
+	background:SetTexture(1/3, 1/3, 1/3)
 
-	local flash = overlay:CreateTexture(nil, 'OVERLAY')
-	flash:SetAllPoints(overlay)
-	flash:SetTexture([=[Interface\Cooldown\star4]=])
-	flash:SetBlendMode('ADD')
-	frame.flash = flash
+	local icon = CreateFrame('Button', nil, bar)
+	icon:SetPoint('BOTTOMRIGHT', bar, 'BOTTOMLEFT', -5, 0)
+	icon:SetSize(26, 26)
+	icon:SetBackdrop(bar:GetBackdrop())
+	icon:SetBackdropColor(0, 0, 0)
+	icon:SetScript('OnClick', IconClick)
+	icon:SetScript('OnUpdate', IconUpdate)
+	icon:SetScript('OnEnter', IconTooltip)
+	icon:SetScript('OnLeave', GameTooltip_HideResetCursor)
+	bar.icon = icon
 
-	local animation = overlay:CreateAnimationGroup(nil, 'YatzeeAnimationTemplate')
-	animation:HookScript('OnFinished', function() flash:Hide() end)
-	frame.animation = animation
-
-	local name = item:CreateFontString(nil, 'ARTWORK', 'GameFontNormal')
-	name:SetPoint('LEFT', item, 'RIGHT', 30, 1)
-	name:SetPoint('RIGHT', frame, -5, 1)
+	local name = icon:CreateFontString('$parentName', 'ARTWORK')
+	name:SetPoint('LEFT', bar, 2, 0)
+	name:SetFont([=[Interface\AddOns\oUF_P3lim\media\semplice.ttf]=], 8, 'OUTLINE')
 	name:SetJustifyH('LEFT')
-	name:SetTextColor(1, 1, 1)
-	frame.name = name
+	bar.name = name
 
-	local border = item:CreateTexture(nil, 'OVERLAY')
-	border:SetPoint('TOPLEFT', -6.5, 6.5)
-	border:SetPoint('BOTTOMRIGHT', 6.5, -6.5)
-	border:SetTexCoord(0.0078125, 0.57421875, 0.0390625, 0.5859375)
-	border:SetTexture([=[Interface\Calendar\CurrentDay]=])
-	frame.border = border
+	local greed = CreateFrame('Button', nil, bar)
+	greed:SetPoint('BOTTOMRIGHT', bar, 'RIGHT', 0, 0)
+	greed:SetSize(24, 24)
+	greed:SetMotionScriptsWhileDisabled(true)
+	greed:SetScript('OnClick', ButtonClick)
+	greed:SetScript('OnEnter', ButtonTooltip)
+	greed:SetScript('OnLeave', GameTooltip_Hide)
+	bar.greed = greed
 
-	local bar = CreateFrame('StatusBar', nil, frame)
-	bar:SetPoint('LEFT', item, 'RIGHT')
-	bar:SetPoint('TOPRIGHT', -3.5, -3.5)
-	bar:SetPoint('BOTTOMRIGHT', -3.5, 3.5)
-	bar:SetStatusBarTexture([=[Interface\AddOns\Yatzee\Armory]=])
-	bar:SetStatusBarColor(0.8, 0.8, 0.8)
-	bar:SetFrameLevel(bar:GetFrameLevel() - 1)
-	bar:SetScript('OnUpdate', onBarUpdate)
-	bar.id = 1
-	frame.bar = bar
-
-	local close = CreateFrame('Button', nil, frame)
-	close:SetPoint('TOPRIGHT', -1, -1)
-	close:SetHeight(12)
-	close:SetWidth(12)
-	close:SetNormalTexture([=[Interface\Buttons\UI-Panel-MinimizeButton-Disabled]=])
-	close:SetHighlightTexture([=[Interface\Buttons\UI-Panel-MinimizeButton-Highlight]=])
-	close:SetMotionScriptsWhileDisabled(true)
-	close:SetScript('OnEnter', createLootTooltip)
-	close:SetScript('OnLeave', GameTooltip_Hide)
-	close:SetScript('OnClick', onLootClick)
-	close.tooltip = PASS
-	close.type = 0
-
-	local need = CreateFrame('Button', nil, frame)
-	need:SetPoint('LEFT', item, 'TOPRIGHT', 4, -3)
-	need:SetWidth(24)
-	need:SetHeight(24)
-	need:SetFrameStrata('HIGH')
+	local need = CreateFrame('Button', nil, bar)
+	need:SetPoint('RIGHT', greed, 'LEFT', -4, 0)
+	need:SetSize(24, 24)
 	need:SetNormalTexture([=[Interface\Buttons\UI-GroupLoot-Dice-Up]=])
 	need:SetPushedTexture([=[Interface\Buttons\UI-GroupLoot-Dice-Down]=])
 	need:SetHighlightTexture([=[Interface\Buttons\UI-GroupLoot-Dice-Highlight]=])
 	need:SetMotionScriptsWhileDisabled(true)
-	need:SetScript('OnEnter', createLootTooltip)
+	need:SetScript('OnClick', ButtonClick)
+	need:SetScript('OnEnter', ButtonTooltip)
 	need:SetScript('OnLeave', GameTooltip_Hide)
-	need:SetScript('OnClick', onLootClick)
-	need.tooltip = NEED
 	need.type = 1
-	frame.need = need
+	bar.need = need
 
-	local greed = CreateFrame('Button', nil, frame)
-	greed:SetPoint('LEFT', item, 'BOTTOMRIGHT', 3, 2)
-	greed:SetWidth(24)
-	greed:SetHeight(24)
-	greed:SetFrameStrata('HIGH')
-	greed:SetNormalTexture(greedNormal)
-	greed:SetPushedTexture(greedPushed)
-	greed:SetHighlightTexture(greedHighlight)
-	greed:SetMotionScriptsWhileDisabled(true)
-	greed:SetScript('OnEnter', createLootTooltip)
-	greed:SetScript('OnLeave', GameTooltip_Hide)
-	greed:SetScript('OnClick', onLootClick)
-	frame.greed = greed
-
-	return frame
-end
-
-local anchor = createFrame()
-anchor:SetScript('OnDragStart', function(self) if(unlocked) then self:StartMoving() end end)
-anchor:SetScript('OnDragStop', function(self) 
-	self:StopMovingOrSizing()
-	savePosition(self)
-end)
-
-anchor:SetMovable(true)
-anchor:EnableMouse(true)
-anchor:RegisterForDrag('LeftButton')
-table.insert(frames, anchor)
-
-local function getFrame()
-	for k, v in pairs(frames) do
-		if(not v.id) then
-			return v
-		end
-	end
-
-	local frame = createFrame()
-	frame:SetScript('OnEvent', CANCEL_LOOT_ROLL)
-	table.insert(frames, frame)
-
-	return frame
-end
-
-function anchor:START_LOOT_ROLL(id, duration)
-	local frame = getFrame()
-	frame.id = id
-	frame.bar.id = id
-	frame:SetScale(YatzeeDB.scale)
-
-	if(id ~= anchor.id) then
-		frame:ClearAllPoints()
-		if(YatzeeDB.orientation == 'down') then
-			frame:SetPoint('TOPLEFT', next(frames) and frames[#frames] or anchor, 'BOTTOMLEFT', 0, -20)
-		else
-			frame:SetPoint('BOTTOMLEFT', next(frames) and frames[#frames] or anchor, 'TOPLEFT', 0, 20)
-		end
-	end
-
-	local texture, name, count, quality, bound, need, greed, nuke = GetLootRollItemInfo(id)
-	frame.item:SetNormalTexture(texture)
-	frame.item.link = GetLootRollItemLink(id)
-	frame.name:SetText(name)
-	frame:SetWidth(70 + frame.name:GetStringWidth())
-
-	if(need) then
-		frame.need:Enable()
+	if(index == 1) then
+		bar:SetPoint('CENTER', 300, 100)
 	else
-		frame.need:Disable()
+		bar:SetPoint('BOTTOMLEFT', frames[index - 1], 'TOPLEFT', 0, 26)
 	end
-	SetDesaturation(frame.need:GetNormalTexture(), not need)
 
-	frame.nukable = nuke
-	anchor:MODIFIER_STATE_CHANGED()
-
-	local color = ITEM_QUALITY_COLORS[quality]
-	frame.bar:SetStatusBarColor(color.r, color.g, color.b, 0.6)
-
-	frame.bar:SetMinMaxValues(0, duration)
-	frame.bar:SetValue(duration)
-	frame:Show()
+	frames[index] = bar
 end
 
-function anchor:MODIFIER_STATE_CHANGED()
-	for k, v in pairs(frames) do
-		if(IsShiftKeyDown() or not v.nukable) then
-			v.greed:SetNormalTexture(greedNormal)
-			v.greed:SetPushedTexture(greedPushed)
-			v.greed:SetHighlightTexture(greedHighlight)
-		else
-			v.greed:SetNormalTexture(nukeNormal)
-			v.greed:SetPushedTexture(nukePushed)
-			v.greed:SetHighlightTexture(nukeHighlight)
+local Yatzee = CreateFrame('Frame')
+Yatzee:SetScript('OnEvent', function(self, event, ...) self[event](self, ...) end)
+Yatzee:RegisterEvent('VARIABLES_LOADED')
+
+function Yatzee:START_LOOT_ROLL(id, time)
+	for index, frame in pairs(frames) do
+		if(not frame:IsShown()) then
+			frame.id = id
+			frame.time = time
+			frame:Show()
+
+			return
 		end
 	end
 end
 
-function anchor:VARIABLES_LOADED(name)
-	self:UnregisterEvent(event)
-	self.CONFIRM_DISENCHANT_ROLL = self.CONFIRM_LOOT_ROLL
-	self:RegisterEvent('CONFIRM_DISENCHANT_ROLL')
-	self:RegisterEvent('CONFIRM_LOOT_ROLL')
-	self:RegisterEvent('START_LOOT_ROLL')
-	self:RegisterEvent('MODIFIER_STATE_CHANGED')
-
-	YatzeeDB = setmetatable(YatzeeDB or {}, {__index = defaults})
-	local point1, point2, x, y = string.split('#', YatzeeDB.position)
-	self:SetPoint(point1, UIParent, point2, x, y)
-
-	UIParent:UnregisterEvent('START_LOOT_ROLL')
-	UIParent:UnregisterEvent('CANCEL_LOOT_ROLL')
-end
-
-function anchor:CONFIRM_LOOT_ROLL(id, rolltype)
+function Yatzee:CONFIRM_LOOT_ROLL(id, type)
 	for index = 1, STATICPOPUP_NUMDIALOGS do
 		local popup = _G['StaticPopup'..index]
-		if(popup.which == 'CONFIRM_LOOT_ROLL' and popup.data == id and popup.data2 == rolltype and popup:IsVisible()) then
+		if(popup.which == 'CONFIRM_LOOT_ROLL' and popup.data == id and popup.data2 == type and popup:IsVisible()) then
 			StaticPopup_OnClick(popup, 1)
 		end
 	end
 end
 
-anchor:RegisterEvent('VARIABLES_LOADED')
-anchor:SetScript('OnEvent', function(self, event, ...)
-	if(event == 'CANCEL_LOOT_ROLL') then
-		CANCEL_LOOT_ROLL(self, event, ...)
-	else
-		self[event](self, ...)
-	end
-end)
+function Yatzee:VARIABLES_LOADED()
+	self:UnregisterEvent('VARIABLES_LOADED')
+	self:RegisterEvent('START_LOOT_ROLL')
 
-SLASH_Yatzee1 = '/yatzee'
-SlashCmdList.Yatzee = function(str)
-	if(str == 'up' or str == 'down') then
-		print('Orientation set '..str..'wards.')
-		YatzeeDB.orientation = str
-	elseif(str == 'reset') then
-		print('Settings reset to defaults. Please reload/relog to affect changes')
-		YatzeeDB = defaults
-	elseif(string.sub(str, 1, 5) == 'scale') then
-		local scale = tonumber(string.sub(str, 7, 9))
-		print('Scale set to '..scale..'%')
-		YatzeeDB.scale = scale / 100
-	elseif(str == 'unlock') then
-		if(anchor:IsShown()) then
-			return print('Grouproll frames in use, bailing out!')
-		end
+	self:RegisterEvent('CONFIRM_LOOT_ROLL')
+	self:RegisterEvent('CONFIRM_DISENCHANT_ROLL')
+	self.CONFIRM_DISENCHANT_ROLL = CONFIRM_LOOT_ROLL
 
-		unlocked = true
-		print('Unlocked frames. Click any of the buttons to lock them.')
-
-		for index = 1, 4 do
-			local frame = getFrame()
-			frame.id = index
-			frame.name:SetText('Movable '..index)
-			frame:Show()
-
-			if(index ~= 1) then
-				frame:ClearAllPoints()
-				if(YatzeeDB.orientation == 'down') then
-					frame:SetPoint('TOPLEFT', frames[index - 1], 'BOTTOMLEFT', 0, -20)
-				else
-					frame:SetPoint('BOTTOMLEFT', frames[index - 1], 'TOPLEFT', 0, 20)
-				end
-			end
-		end
-	elseif(str == 'lock' and anchor:IsVisible()) then
-		unlocked = false
-		print('Frames locked.')
-
-		for k, v in pairs(frames) do
-			v.id = nil
-			v:Hide()
-		end
-	else
-		print('Usage:\n' ..
-			'  |cff999999lock|unlock|r - Unlock or lock the moving frames\n' ..
-			'  |cff999999scale #|r - Set scale of frames, # is % value (0-300)\n' ..
-			'  |cff999999up|down|r - Set orientation of the growing\n' ..
-			'  |cff999999reset|r - Reset settings to defaults')
-	end
+	UIParent:UnregisterEvent('START_LOOT_ROLL')
+	UIParent:UnregisterEvent('CANCEL_LOOT_ROLL')
 end

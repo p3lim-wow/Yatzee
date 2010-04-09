@@ -3,6 +3,5 @@
 ## Version: Alpha
 ## Title: Yatzee
 ## Notes: Group Roll frame replacement
-## SavedVariablesPerCharacter: YatzeeDB
 
-Yatzee.xml
+Yatzee.lua
