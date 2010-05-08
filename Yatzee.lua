@@ -10,7 +10,6 @@ this addon without express, written permission of the author.
 --]]
 
 local active = false
-local configuring = false
 local frames = {}
 
 local function Update(self, elapsed)
@@ -92,10 +91,7 @@ local function OnShow(self)
 	self:SetMinMaxValues(0, self.time)
 	self:SetValue(self.time)
 
-	self:SetMovable(false)
-	self.icon:EnableMouse(true)
-	self.need:EnableMouse(true)
-	self.greed:EnableMouse(true)
+	self:Show()
 end
 
 local function OnEvent(self, event, id)
@@ -190,108 +186,33 @@ for index = 1, 4 do
 	frames[index] = bar
 end
 
-local function SlashCommand(str)
-	if(InCombatLockdown() or active) then
-		return print('|cffff8080Yatzee:|r Cannot alter the frames right now, try again later')
-	elseif(str == 'reset') then
-		for index, frame in pairs(frames) do
-			frame:ClearAllPoints()
-			if(index == 1) then
-				frame:SetPoint('CENTER', 300, 100)
-			else
-				frame:SetPoint('BOTTOMLEFT', frames[index - 1], 'TOPLEFT', 0, 26)
-			end
-		end
-	else
-		for index, frame in pairs(frames) do
-			if(not frame:IsShown()) then
-				frame.icon:SetNormalTexture([=[Interface\Icons\INV_Misc_CandySkull]=])
-				frame.icon:GetNormalTexture():SetTexCoord(0.08, 0.92, 0.08, 0.92)
-
-				frame.name:SetFormattedText('Yatzee Frame #%s', index)
-				frame:SetWidth(frame.name:GetWidth() + 100)
-
-				frame.nukable = true
-				MODIFIER_STATE_CHANGED(frame)
-
-				GroupLootFrame_EnableLootButton(frame.need)
-				frame.need.reason = nil
-
-				frame.dummyTime = 100
-				frame:SetMinMaxValues(0, 100)
-				frame:SetValue(100)
-
-				frame:SetMovable(true)
-				frame.icon:EnableMouse(false)
-				frame.need:EnableMouse(false)
-				frame.greed:EnableMouse(false)
-				frame:Show()
-
-				configuring = true
-			else
-				frame:SetMovable(false)
-				frame.icon:EnableMouse(true)
-				frame.need:EnableMouse(true)
-				frame.greed:EnableMouse(true)
-				frame:Hide()
-
-				configuring = false
-			end
-		end
-	end
-end
-
 local Yatzee = CreateFrame('Frame')
-Yatzee:SetScript('OnEvent', function(self, event, ...) self[event](self, ...) end)
+Yatzee:SetScript('OnEvent', function(self, event, ...) self[event](self, event, ...) end)
 Yatzee:RegisterEvent('VARIABLES_LOADED')
 
-function Yatzee:START_LOOT_ROLL(id, time)
-	if(configuring) then
-		for index, frame in pairs(frames) do
-			frame:Hide()
-		end
-	end
-
+function Yatzee:START_LOOT_ROLL(event, id, time)
 	for index, frame in pairs(frames) do
 		if(not frame:IsShown()) then
 			active = true
 
 			frame.id = id
 			frame.time = time
-			frame:Show()
-			frame:SetMovable(false)
 			return OnShow(frame)
 		end
 	end
-end
+end	
 
-function Yatzee:PLAYER_REGEN_DISABLED()
-	if(configuring) then
-		for index, frame in pairs(frames) do
-			frame:Hide()
-		end
-
-		print('|cffff8080Yatzee:|r Entering combat, locking down frames.')
-		configuring = false
-	end
-end
-	
-
-function Yatzee:CONFIRM_LOOT_ROLL(id, type)
+function Yatzee:CONFIRM_LOOT_ROLL(event, id, type)
 	for index = 1, STATICPOPUP_NUMDIALOGS do
 		local popup = _G['StaticPopup'..index]
-		if(popup.which == 'CONFIRM_LOOT_ROLL' and popup.data == id and popup.data2 == type and popup:IsVisible()) then
+		if(popup.which == event and popup.data == id and popup.data2 == type and popup:IsVisible()) then
 			StaticPopup_OnClick(popup, 1)
 		end
 	end
 end
 
-function Yatzee:VARIABLES_LOADED()
-	SlashCmdList.Yatzee = SlashCommand
-	SLASH_Yatzee1 = '/yatzee'
-
-	self:UnregisterEvent('VARIABLES_LOADED')
-	self:RegisterEvent('PLAYER_REGEN_DISABLED')
+function Yatzee:VARIABLES_LOADED(event)
+	self:UnregisterEvent(event)
 	self:RegisterEvent('START_LOOT_ROLL')
 
 	self:RegisterEvent('CONFIRM_LOOT_ROLL')
